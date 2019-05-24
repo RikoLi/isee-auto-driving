@@ -1,4 +1,3 @@
-#!/usr/bin/python 
 # -*- coding: utf-8 -*-
 
 '''
@@ -9,18 +8,18 @@ by Riko
 import cv2.cv2 as cv
 import os
 
-# 对象跟踪器
-class Tracker:
+# 摄像机
+class Camera:
     def __init__(self, video_stream=0):
         '''
-        追踪器类Tracker，生成追踪器对象。\n
+        摄像机类Camera，生成Camera对象。\n
         Parameters:\n
         video_stream: string，视频流地址，默认值为0（本地摄像头）
         '''
         self.video_stream = video_stream
 
     # 图片逐帧获取
-    def track(self, step=1, save_dir='./video_frames/'):
+    def sample(self, step=1, save_dir='./video_frames/'):
         '''
         输出视频流，鼠标框选对象进行追踪，按c保存ROI内图像，按q退出。\n
         Parameters:\n
@@ -75,7 +74,7 @@ class Tracker:
             cv.imshow('camera', frame)
             if autoget_flg and (cntt%step==0):
                 # 保存图像
-                cv.imwrite(save_dir+str(cnt)+'.jpg', roi)
+                cv.imwrite(save_dir+'/'+str(cnt)+'.jpg', roi)
                 print('Image %d is saved!' % (cnt))
                 cnt += 1
                 cntt = 0
@@ -101,5 +100,5 @@ class Tracker:
 
 
 if __name__ == '__main__':
-    tracker = Tracker(0)
-    tracker.track(step=10)
+    cam = Camera(1)
+    cam.sample(step=5, save_dir='class_30_add')
