@@ -9,7 +9,7 @@ import cv2.cv2 as cv
 import numpy as np
 
 # 检测圆形
-def detectCircles(img, param1=200, param2=100, minRadius=40, maxRadius=150, bias=15):
+def detectCircles(img, param1=200, param2=100, minRadius=40, maxRadius=130, bias=15):
     roi = img.copy()
     img = cv.bilateralFilter(img, 9, 75, 75) # Smoothing
     gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
@@ -17,8 +17,8 @@ def detectCircles(img, param1=200, param2=100, minRadius=40, maxRadius=150, bias
     gray = cv.equalizeHist(gray)
     circles = cv.HoughCircles(
         gray, cv.HOUGH_GRADIENT, 1, 20,
-        param1=200, param2=100, minRadius=40, 
-        maxRadius=150)
+        param1=param1, param2=param2, minRadius=minRadius, 
+        maxRadius=maxRadius)
 
     if circles is not None:
         circles = np.int32(np.around(circles))
@@ -35,15 +35,9 @@ def detectCircles(img, param1=200, param2=100, minRadius=40, maxRadius=150, bias
                 iy = c[1] - c[2] - bias
                 ex = c[0] + c[2] + bias
                 ey = c[1] + c[2] + bias
-                if c[2] > 60:
-                    cv.rectangle(img, (ix,iy), (ex,ey), (0,255,0), 2)
-                    cv.putText(img, 'Locked', (ix,iy-5), cv.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,255), 2)
-                    cv.imshow('camera', img)
+                if c[2] > 100:
                     return 'locked', roi[iy:ey+1, ix:ex+1], [ix, iy, ex, ey]
                 else:
-                    cv.rectangle(img, (ix,iy), (ex,ey), (0,0,255), 2)
-                    cv.putText(img, 'Captured', (ix,iy-5), cv.FONT_HERSHEY_SIMPLEX, 0.7, (255,0,255), 2)
-                    cv.imshow('camera', img)
                     return 'captured', roi[iy:ey+1, ix:ex+1], [ix, iy, ex, ey]
     else:
         cv.imshow('camera', img)
@@ -176,8 +170,13 @@ class DataLoader:
             cnt += 1
             if cnt == read_size:
                 break
+        one_hots = []
+        for l in labels:
+            t = np.zeros((6,1))
+            t[int(l), 0] = 1
+            one_hots.append(t)
         self.paths = paths
-        self.labels = labels
+        self.labels = one_hots
         self.rois = rois
 
     def get(self):

@@ -13,14 +13,17 @@ class IconNet:
     def __init__(self, model_path=None):
         self.model_path = model_path
         if self.model_path is not None:
-            self.model = self.loadModel()
+            self.model = self._loadModel()
         else:
-            self.model = self.buildNewModel()
+            self.model = self._buildNewModel()
     
-    def loadModel(self):
+    def _saveModel(self, save_path='./icon_net.h5'):
+        self.model.save(save_path, include_optimizer=False)
+    
+    def _loadModel(self):
         return keras.models.load_model(self.model_path)
 
-    def buildNewModel(self):
+    def _buildNewModel(self):
         '''
         创建新的分类器模型。
         '''
@@ -63,13 +66,13 @@ class IconNet:
             tb = TensorBoard(log_dir=log_path, batch_size=batch_size)
 
         self.model.compile(optimizer=opt, loss='categorical_crossentropy', metrics='accuracy')
+        if self.model_path is None:
+            self._saveModel()
         self.model.fit(X, Y, batch_size=batch_size, epochs=epoches, callbacks=[checkpt, tb], validation_split=0.2)
 
     def predict(self, img_input):
         pass
 
-def preprocess(imgs):
-    pass
 
 def convBlock(x, kernel_size, channels, strides):
     y = Conv2D(channels, kernel_size, strides, padding='same')(x)

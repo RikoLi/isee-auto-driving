@@ -5,7 +5,7 @@ from utils import DataLoader
 
 # Load data
 data_path = './final_labels.txt'
-loader = DataLoader(data_path, load_split=1)
+loader = DataLoader(data_path, load_split=0.01)
 imgs, Y = loader.get()
 # cv.namedWindow('d', cv.WINDOW_NORMAL)
 # cv.imshow('d', imgs[8])
@@ -23,6 +23,10 @@ for img in imgs:
 # Train new model
 if False:
     net = IconNet()
-    net.buildNewModel()
-    # net.train(X, Y)
-    # to be continued ...
+    net.train(X, Y, batch_size=8, epoches=100)
+
+# Train old model
+if False:
+    net = IconNet(model_path='./icon_net.h5')
+    net.loadWeights('./icon_net_weights.h5')
+    net.train(X, Y, batch_size=8, epoches=100)
