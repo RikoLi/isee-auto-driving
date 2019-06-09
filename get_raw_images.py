@@ -72,9 +72,9 @@ class Camera:
 
             # 显示当前帧
             cv.imshow('camera', frame)
-            if autoget_flg and (cntt%step==0):
+            if autoget_flg and (cntt%step==0) and step != 0:
                 # 保存图像
-                cv.imwrite(save_dir+'/'+str(cnt)+'.jpg', roi)
+                cv.imwrite(save_dir+'/'+str(cnt)+'.jpg', frame)
                 print('Image %d is saved!' % (cnt))
                 cnt += 1
                 cntt = 0
@@ -90,6 +90,14 @@ class Camera:
                 else:
                     print('-------- Disable auto collecting ! --------')
                     autoget_flg = False
+            elif key == ord('s'): # 单张采集
+                if not os.path.exists(save_dir):
+                    os.mkdir(save_dir)
+                # 保存图像
+                cv.imwrite(save_dir+'/'+str(cnt)+'.jpg', frame)
+                print('Image %d is saved!' % (cnt))
+                cnt += 1
+                cntt = 0
             elif key == ord('q'):   # 按q退出
                 break
 
@@ -100,5 +108,5 @@ class Camera:
 
 
 if __name__ == '__main__':
-    cam = Camera(1)
-    cam.sample(step=5, save_dir='class_30_add')
+    cam = Camera(0)
+    cam.sample(step=1, save_dir='6.8_stop')
