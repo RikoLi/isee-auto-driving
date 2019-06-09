@@ -2,8 +2,8 @@ from utils import *
 from model import *
 
 if __name__ == '__main__':
-    model = IconNet()
-    model.loadWeights('./...')
+    # model = IconNet()
+    # model.loadWeights('./...')
 
     is_predicted = False
 
@@ -11,13 +11,13 @@ if __name__ == '__main__':
     cv.namedWindow('camera')
     while True:
         _, frame = steam.read()
-        status, roi = detectCircles(frame)
+        status, roi, _ = detectCircles(frame)
         
-        if status is not None:
-            # 分类预测
-            label = model.predict(roi)
-        else:
-            print('Detecting...')
+        # if status is not None:
+        #     # 分类预测
+        #     label = model.predict(roi)
+        # else:
+        #     print('Detecting...')
 
 
         key = cv.waitKey(5) & 0xFF
