@@ -1,32 +1,32 @@
 import numpy as np
 import cv2.cv2 as cv
 from model import *
-from utils import DataLoader
+from utils import *
 
-# Load data
-data_path = './final_labels.txt'
-loader = DataLoader(data_path, load_split=0.01)
-imgs, Y = loader.get()
-# cv.namedWindow('d', cv.WINDOW_NORMAL)
-# cv.imshow('d', imgs[8])
-# cv.waitKey()
-# cv.destroyAllWindows()
+def main():
+    # Load data
+    data_path = '../yolo3/model_data/final_labels.txt' # Change to your own path
+    loader = DataLoader(data_path, load_split=1)
+    imgs, Y = loader.get()
 
-# Preprocessing
-X = []
-for img in imgs:
-    tmp = cv.resize(img, (128,128))
-    tmp = tmp - np.mean(tmp)
-    tmp = (tmp / 255.0 + 1.0) * 0.5
-    X.append(tmp)
+    # Preprocessing
+    X = preprocess(imgs, new_size=(128,128))
+    Y = np.array(Y)
+    Y = np.reshape(Y, (-1,6))
 
-# Train new model
-if False:
-    net = IconNet()
-    net.train(X, Y, batch_size=8, epoches=100)
+    
+    
+    # Training, choose one training method
+    # Train new model
+    if True:
+        net = IconNet()
+        net.train(X, Y, batch_size=16, epoches=100)
 
-# Train old model
-if False:
-    net = IconNet(model_path='./icon_net.h5')
-    net.loadWeights('./icon_net_weights.h5')
-    net.train(X, Y, batch_size=8, epoches=100)
+    # Train old model
+    if False:
+        net = IconNet(model_path='./models/icon_net.h5') # Change to your own path
+        net.loadWeights('./models/icon_net_weights.h5') # Change to your own path
+        net.train(X, Y, batch_size=8, epoches=100)
+
+if __name__ == '__main__':
+    main()
