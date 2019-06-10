@@ -4,12 +4,13 @@
 by Riko
 '''
 import glob
+import random
 import os
 import cv2.cv2 as cv
 import numpy as np
 
 # 检测圆形
-def detectCircles(img, param1=200, param2=100, minRadius=40, maxRadius=130, bias=15):
+def detectCircles(img, param1=200, param2=90, minRadius=10, maxRadius=130, bias=15):
     roi = img.copy()
     img = cv.bilateralFilter(img, 9, 75, 75) # Smoothing
     gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
@@ -35,7 +36,7 @@ def detectCircles(img, param1=200, param2=100, minRadius=40, maxRadius=130, bias
                 iy = c[1] - c[2] - bias
                 ex = c[0] + c[2] + bias
                 ey = c[1] + c[2] + bias
-                if c[2] > 100:
+                if c[2] > 90:
                     return 'locked', roi[iy:ey+1, ix:ex+1], [ix, iy, ex, ey]
                 else:
                     return 'captured', roi[iy:ey+1, ix:ex+1], [ix, iy, ex, ey]
@@ -144,8 +145,43 @@ def extractIcon(data_path, save_name, class_id, auto=False):
             # if k == ord('n'):
             #     cv.destroyWindow('roi')
             #     continue
-            
 
+
+# 图像预处理
+def preprocess(imgs, new_size=(128,128)):
+    '''
+    图像预处理，减去均值，调整大小。
+    '''
+    X = []
+    for img in imgs:
+        tmp = cv.resize(img, new_size)
+        tmp = tmp - np.mean(tmp)
+        #tmp = (tmp / 255.0 + 1.0) * 0.5
+        X.append(tmp)
+    X = np.array(X)
+    return X
+
+
+# 推理预测
+def predict(net, img, icon_key):
+    imgs = [img]
+    results = []
+    try:
+        X = preprocess(imgs, new_size=(128,128))
+        Y = net.model.predict(X)
+        Y = Y.tolist()
+        for y in Y:
+            max_id = y.index(max(y))
+            results.append(icon_key[str(max_id)])
+        return results[0]
+    except:
+        return 'None'
+
+
+
+
+
+# 数据读取类
 class DataLoader:
     def __init__(self, label_txt_path, load_split=1):
         self.label_txt_path = label_txt_path
@@ -157,13 +193,14 @@ class DataLoader:
     def _load(self, load_split):
         with open(self.label_txt_path, 'r') as f:
             files = f.readlines()
+        random.shuffle(files)
         read_size = int(len(files) * load_split)
         cnt = 0
         paths = []
         labels = []
         rois = []
         for f in files:
-            paths.append(f.split(' ')[0].replace('\\', '/'))
+            paths.append(f.split(' ')[0])
             tmp = f.split(' ')[1]
             labels.append(tmp.split(',')[4].replace('\n', ''))
             rois.append(tmp.split(',')[:4])
@@ -172,8 +209,8 @@ class DataLoader:
                 break
         one_hots = []
         for l in labels:
-            t = np.zeros((6,1))
-            t[int(l), 0] = 1
+            t = np.zeros((1,6))
+            t[0, int(l)] = 1
             one_hots.append(t)
         self.paths = paths
         self.labels = one_hots
@@ -183,7 +220,7 @@ class DataLoader:
         imgs = []
         cnt = 0
         for i in range(len(self.paths)):
-            img = cv.imread(self.paths[i])
+            img = cv.imread(self.paths[i].replace('./', '../'))
             ix = int(self.rois[i][0])
             ex = int(self.rois[i][2])
             iy = int(self.rois[i][1])
@@ -193,6 +230,16 @@ class DataLoader:
             cnt += 1
             print('Load images: {}/{}'.format(cnt, len(self.paths)))
         return imgs, self.labels
+
+# 通信类
+class Comm:
+    def __init__(self, session_name):
+        self.session_name = session_name
+        print('通信[{}]已建立！'.format(self.session_name))
+
+    def send(self, addr, msg):
+        # test
+        print('Message sent! From: {}, To: {}, Msg: {}'.format(self.session_name, addr, msg))
 
 if __name__ == '__main__':
     # batchResize(640, 480, 'class_stop')
