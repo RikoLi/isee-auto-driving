@@ -8,14 +8,16 @@ import random
 import os
 import cv2.cv2 as cv
 import numpy as np
+import socket, struct, time
 
 # 检测圆形
+# Default parameters p1 = 200, p2 = 90, min = 10
 def detectCircles(img, param1=200, param2=90, minRadius=10, maxRadius=130, bias=15):
     roi = img.copy()
     img = cv.bilateralFilter(img, 9, 75, 75) # Smoothing
     gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-    gray = cv.medianBlur(gray, 5)
-    gray = cv.equalizeHist(gray)
+    # gray = cv.medianBlur(gray, 5)
+    # gray = cv.equalizeHist(gray)
     circles = cv.HoughCircles(
         gray, cv.HOUGH_GRADIENT, 1, 20,
         param1=param1, param2=param2, minRadius=minRadius, 
@@ -36,7 +38,9 @@ def detectCircles(img, param1=200, param2=90, minRadius=10, maxRadius=130, bias=
                 iy = c[1] - c[2] - bias
                 ex = c[0] + c[2] + bias
                 ey = c[1] + c[2] + bias
-                if c[2] > 90:
+                if ix == -bias and iy == -bias and ex == bias and ey == bias:
+                    return None, None, None
+                if c[2] > 30: # > 90
                     return 'locked', roi[iy:ey+1, ix:ex+1], [ix, iy, ex, ey]
                 else:
                     return 'captured', roi[iy:ey+1, ix:ex+1], [ix, iy, ex, ey]
@@ -148,15 +152,21 @@ def extractIcon(data_path, save_name, class_id, auto=False):
 
 
 # 图像预处理
-def preprocess(imgs, new_size=(128,128)):
+def preprocess(imgs, new_size=(128,128), is_test=False):
     '''
-    图像预处理，减去均值，调整大小。
+    图像预处理，减去均值，调整大小，随机旋转。
     '''
     X = []
     for img in imgs:
+        # Resize
         tmp = cv.resize(img, new_size)
+        # Normalization
         tmp = tmp - np.mean(tmp)
         #tmp = (tmp / 255.0 + 1.0) * 0.5
+        if not is_test:
+            # Random rotation
+            times = np.random.randint(0, 4)
+            tmp = np.rot90(tmp, times)
         X.append(tmp)
     X = np.array(X)
     return X
@@ -165,17 +175,19 @@ def preprocess(imgs, new_size=(128,128)):
 # 推理预测
 def predict(net, img, icon_key):
     imgs = [img]
-    results = []
+    norm_y = []
+    prob = 0
     try:
-        X = preprocess(imgs, new_size=(128,128))
+        X = preprocess(imgs, new_size=(128,128), is_test=True)
         Y = net.model.predict(X)
-        Y = Y.tolist()
-        for y in Y:
-            max_id = y.index(max(y))
-            results.append(icon_key[str(max_id)])
-        return results[0]
+        y = Y.tolist()[0]
+        for each in y:
+            norm_y.append(round(each / sum(y), 3))
+        max_id = y.index(max(norm_y))
+        prob = norm_y[max_id]
+        return icon_key[str(max_id)], str(prob)
     except:
-        return 'None'
+        return 'None', str(prob)
 
 
 
@@ -233,13 +245,64 @@ class DataLoader:
 
 # 通信类
 class Comm:
-    def __init__(self, session_name):
+    def __init__(self, session_name, addr):
         self.session_name = session_name
-        print('通信[{}]已建立！'.format(self.session_name))
+        self.addr = addr
+        self.sock = None
+        try:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
+            self.sock.connect((self.addr.split(':')[1].replace('//',''), int(self.addr.split(':')[2])))
+            print('与{}的通信[{}]已建立！'.format(self.addr, self.session_name))
+        except Exception as e:
+            print(e)
 
-    def send(self, addr, msg):
-        # test
-        print('Message sent! From: {}, To: {}, Msg: {}'.format(self.session_name, addr, msg))
+    def _packAndSend(self, command):
+        flag = False
+        
+        speed_buff = command[0].split(',')
+        speed_left = command[1].split(',')
+        speed_right = command[2].split(',')
+
+        send_buff = struct.pack('5B', int(speed_buff[0],16), int(speed_buff[1],16), int(speed_buff[2],16), int(speed_buff[3],16), int(speed_buff[4],16))
+        send_left = struct.pack('5B', int(speed_left[0],16), int(speed_left[1],16), int(speed_left[2],16), int(speed_left[3],16), int(speed_left[4],16))
+        send_right = struct.pack('5B', int(speed_right[0],16), int(speed_right[1],16), int(speed_right[2],16), int(speed_right[3],16), int(speed_right[4],16))
+
+        try:
+            self.sock.send(send_buff)
+            self.sock.send(send_left)
+            self.sock.send(send_right)
+            flag = True
+            # print(send_buff, send_left, send_right)
+            return flag
+        except Exception as e:
+            print('Socket error!', e)
+            return flag
+
+    def send(self, msg):
+        flag = False
+        if msg == '10':
+            flag = self._packAndSend(('ff,00,01,00,ff', 'ff,02,01,37,ff', 'ff,02,02,37,ff'))
+        elif msg == '30':
+            flag = self._packAndSend(('ff,00,01,00,ff', 'ff,02,01,40,ff', 'ff,02,02,42,ff'))
+        elif msg == '80':
+            flag = self._packAndSend(('ff,00,01,00,ff', 'ff,02,01,50,ff', 'ff,02,02,56,ff'))
+        elif msg == 'right':
+            flag = self._packAndSend(('ff,00,04,00,ff', 'ff,02,01,00,ff', 'ff,02,02,35,ff'))
+            time.sleep(2)
+            flag = self._packAndSend(('ff,00,01,00,ff', 'ff,02,01,37,ff', 'ff,02,02,35,ff'))
+        elif msg == 'left':
+            flag = self._packAndSend(('ff,00,03,00,ff', 'ff,02,01,37,ff', 'ff,02,02,00,ff'))
+            time.sleep(2)
+            flag = self._packAndSend(('ff,00,01,00,ff', 'ff,02,01,37,ff', 'ff,02,02,35,ff'))
+        elif msg == 'stop':
+            flag = self._packAndSend(('ff,00,00,00,ff', 'ff,02,01,1d,ff', 'ff,02,01,1d,ff'))
+
+        if flag:
+            print('Session: {}, To: {}, Msg: {}'.format(self.session_name, self.addr, msg))
+
+    def close(self):
+        self._packAndSend(('ff,00,00,00,ff', 'ff,02,01,1d,ff', 'ff,02,01,1d,ff'))
+        self.sock.close()
 
 if __name__ == '__main__':
     # batchResize(640, 480, 'class_stop')

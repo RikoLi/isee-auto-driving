@@ -10,7 +10,7 @@ def main():
     imgs, Y = loader.get()
 
     # Preprocessing
-    X = preprocess(imgs, new_size=(128,128))
+    X = preprocess(imgs, new_size=(128,128), is_test=False)
     Y = np.array(Y)
     Y = np.reshape(Y, (-1,6))
 
