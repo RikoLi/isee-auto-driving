@@ -1,3 +1,5 @@
+[中文](./README.md)|[English](./en_readme/EN_README.md)
+
 # 光电实验大作业
 2018-2019学年，ISEE光电信息综合实验期末大作业。
 
@@ -63,6 +65,7 @@ python main.py
 
 ### 通信
 <del>* commu.py 定义了通信相关实现</del>
+
 在utils.py中实现了Comm类。
 
 ### 效果
