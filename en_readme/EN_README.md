@@ -62,7 +62,7 @@ Alternative solution:
 Currently, detection, inference and result display run in solo-thread, which may lead to lags in the whole process because of the great time consumption in computation. A future improvement can be a rebuild with multi-thread/process approach that will implement inference and real-time display function seperately.
 
 ### Communication
-`Comm` class is inplemented in `utils.py`.
+`Comm` class is implemented in `utils.py`.
 
 ### Demo
 ![s1](../samples/sample1.png)
